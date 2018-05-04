@@ -79,7 +79,7 @@ CMDMOTOR::CMDMOTOR(int INCA, int INCB, int MP, int MM) {
  enabled=false;
  aTuneStep=50, aTuneNoise=1, aTuneStartValue=100;
   aTuneLookBack=20;
-
+SerialDebug=0;
  ATuneModeRemember=2;
   /*
  if (!SerialDebug->enabled())
