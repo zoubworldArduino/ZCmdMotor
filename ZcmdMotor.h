@@ -37,11 +37,11 @@ public:
   void setup();
   void setPWMValue(signed int td);
   void stop();
-  void setSerialDebug(Uart * SerialDebug);
+  void setSerialDebug(HardwareSerial * SerialDebug);
   
 private:
   ZEncoder * encoder;
-  Uart * SerialDebug;
+  HardwareSerial * SerialDebug;
   boolean enabled;
 
   boolean tuning ;

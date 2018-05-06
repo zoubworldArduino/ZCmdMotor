@@ -10,7 +10,7 @@
 
 
 
-void CMDMOTOR::setSerialDebug(Uart * mySerialDebug)
+void CMDMOTOR::setSerialDebug(HardwareSerial * mySerialDebug)
 {
   SerialDebug=mySerialDebug;
 }
