@@ -30,6 +30,8 @@ public:
   PID_ATune *aTune;
   //GroveEncoder *Encoder;
   void setPoint(int point);
+  int getPoint();
+  PID * getPID();
   ZEncoder * getEncoder();
   CMDMOTOR(int INCA, int INCB, int MP, int MM);
   void setPin(int INCA, int INCB, int MP, int MM);

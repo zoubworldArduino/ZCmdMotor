@@ -14,6 +14,10 @@ void CMDMOTOR::setSerialDebug(HardwareSerial * mySerialDebug)
 {
   SerialDebug=mySerialDebug;
 }
+int CMDMOTOR::getPoint()
+{
+  return point;
+}
 void CMDMOTOR::setPoint(int mypoint) {
   enabled=true;
   newPoint = mypoint;
@@ -65,9 +69,9 @@ void CMDMOTOR::changeAutoTune()
  *    reliable defaults, so we need to have the user set them.
  ***************************************************************************/
 CMDMOTOR::CMDMOTOR(int INCA, int INCB, int MP, int MM) {
- Kp = 1;//1
- Ki = 1;//0.05
- Kd = 0.00005; //0.0005
+ Kp = 20;//1
+ Ki = 30;//0.05
+ Kd = 0.0005; //0.0005
  olddirection = 1;
  direction = -1;
  dpointMax = 50;
@@ -115,6 +119,9 @@ void CMDMOTOR::setPin(int INCA, int INCB, int MP, int MM)
 ZEncoder * CMDMOTOR::getEncoder() {
   return encoder;
 }
+PID * CMDMOTOR::getPID() {
+  return pid;
+}
 void CMDMOTOR::setup() {
   if (SerialDebug) {
 
@@ -157,9 +164,11 @@ pid->SetOutputLimits(-14096,14095);
 void CMDMOTOR::stop()
 {
   newPoint=point=0;
+  Input=Output=0;
   enabled=false;
   setPWMValue(0);
-  
+  getEncoder()->resetSpeed();
+  getPID()->Initialize();
 }
 /* voltage apply on motor */
 void CMDMOTOR::setPWMValue(signed int m1) {
