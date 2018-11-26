@@ -1,6 +1,8 @@
 
 #include <ZcmdMotor.h>
-
+#define DEBUG(a) a
+//#define DEBUG(a) {}
+#include <assert.h>
 
 
 
@@ -69,6 +71,9 @@ void CMDMOTOR::changeAutoTune()
  *    reliable defaults, so we need to have the user set them.
  ***************************************************************************/
 CMDMOTOR::CMDMOTOR(int INCA, int INCB, int MP, int MM) {
+#ifdef ROS_USED 
+    nh=0;
+#endif
  Kp = 20;//1
  Ki = 30;//0.05
  Kd = 0.0005; //0.0005
@@ -212,6 +217,11 @@ void CMDMOTOR::setPWMValue(signed int m1) {
 }
 
 void CMDMOTOR::loop() {
+  
+#ifdef ROS_USED 
+  getEncoder()->loop();
+#endif
+  
   if (enabled)
   {
   /*
@@ -306,60 +316,76 @@ else
 
 
 
+#ifdef ROS_USED 
+
+CMDMOTOR * myZcmdmotor[4];
+static void callbackinstancepwm0( const std_msgs::Int16& pwm_msg)
+{	
+  myZcmdmotor[0]->enabled=false;
+  myZcmdmotor[0]->setPWMValue(pwm_msg.data);    
+}
+
+static void callbackinstancespeed0( const std_msgs::Int16& speed_msg)
+{	
+  myZcmdmotor[0]->setPoint(speed_msg.data);    
+}
+
+static void callbackinstancepwm1( const std_msgs::Int16& pwm_msg)
+{	
+  myZcmdmotor[1]->enabled=false;
+  myZcmdmotor[1]->setPWMValue(pwm_msg.data);    
+}
+
+static void callbackinstancespeed1( const std_msgs::Int16& speed_msg)
+{	
+  myZcmdmotor[1]->setPoint(speed_msg.data);    
+}
+
+static void callbackinstancepwm2( const std_msgs::Int16& pwm_msg)
+{	
+  myZcmdmotor[2]->enabled=false;
+  myZcmdmotor[2]->setPWMValue(pwm_msg.data);    
+}
+
+static void callbackinstancespeed2( const std_msgs::Int16& speed_msg)
+{	
+  myZcmdmotor[2]->setPoint(speed_msg.data);    
+}
+static void callbackinstancepwm3( const std_msgs::Int16& pwm_msg)
+{	
+  myZcmdmotor[3]->enabled=false;
+  myZcmdmotor[3]->setPWMValue(pwm_msg.data);    
+}
+
+static void callbackinstancespeed3( const std_msgs::Int16& speed_msg)
+{	
+  myZcmdmotor[3]->setPoint(speed_msg.data);    
+}
+static void(*callbackinstancespeed[4])(const std_msgs::Int16& cmd_msg)={
+	callbackinstancespeed0,callbackinstancespeed1,callbackinstancespeed2,callbackinstancespeed3	
+	};
+static void(*callbackinstancepwm[4])(const std_msgs::Int16& cmd_msg)={
+	callbackinstancepwm0,callbackinstancepwm1,callbackinstancepwm2,callbackinstancepwm3	
+	};
+static  int index=0;
+/** setup :
+  At setup after NodeHandle setup, call this to initialise the topic
+*/
+void CMDMOTOR::setup( ros::NodeHandle * myNodeHandle,	const char   *	topicPWM,	const char   *	topicSPEED)
+{
+  assert(index<4);
+  myZcmdmotor[index]= this;
+  nh=myNodeHandle;
+  subPWM=new ros::Subscriber<std_msgs::Int16> (topicPWM, callbackinstancepwm[index]); 
+  subSpeed=new ros::Subscriber<std_msgs::Int16> (topicSPEED, callbackinstancespeed[index]); 
+  nh->subscribe(*subPWM); 
+  nh->subscribe(*subSpeed); 
+  DEBUG(nh->loginfo("CMDMOTOR::setup()")); 
+  DEBUG(nh->loginfo(topicPWM)); 
+  DEBUG(nh->loginfo(topicSPEED)); 
+  index++;
+  
+}
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#endif 

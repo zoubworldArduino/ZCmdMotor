@@ -1,6 +1,4 @@
 
-
-
 /*==================================================================================================*/
 /*==================================================================================================*/
 /*==================================================================================================*/
@@ -9,6 +7,15 @@
 #include <PID_v1.h>
 #include <PID_AutoTune_v0.h>
 #include <ZEncoder.h>
+
+
+#ifdef ROS_USED 
+#include <ros.h>
+#include <ros/time.h>
+#include <std_msgs/Int16.h>
+#endif 
+
+
 #define MIN(a,b) ((a<b)?a:b)
 #define MAX(a,b) ((a<b)?b:a)
 
@@ -37,14 +44,25 @@ public:
   void setPin(int INCA, int INCB, int MP, int MM);
   void loop();
   void setup();
+   #ifdef ROS_USED 
+    void setup( ros::NodeHandle * myNodeHandle,	const char   *	topicPWM,	const char   *	topicSPEED); 
+#endif
   void setPWMValue(signed int td);
   void stop();
   void setSerialDebug(HardwareSerial * SerialDebug);
-  
+    boolean enabled;///don't use
+
 private:
+  #ifdef ROS_USED 
+    ros::NodeHandle  *nh;
+    std_msgs::Int16 pwm_msg;//speed //deltaD//D
+    std_msgs::Int16 speed_msg;//speed //deltaD//D
+    ros::Subscriber<std_msgs::Int16> *subPWM;
+    ros::Subscriber<std_msgs::Int16> *subSpeed;
+        
+#endif
   ZEncoder * encoder;
   HardwareSerial * SerialDebug;
-  boolean enabled;
 
   boolean tuning ;
 double aTuneStep, aTuneNoise, aTuneStartValue;
