@@ -1,7 +1,7 @@
 
 #include <ZcmdMotor.h>
-#define DEBUG(a) a
-//#define DEBUG(a) {}
+//#define DEBUG(a) a
+#define DEBUG(a) {}
 #include <assert.h>
 
 
@@ -172,7 +172,9 @@ void CMDMOTOR::stop()
   Input=Output=0;
   enabled=false;
   setPWMValue(0);
-  getEncoder()->resetSpeed();
+  #if ENABLE_SPEED
+    getEncoder()->resetSpeed();
+  #endif
   getPID()->Initialize();
 }
 /* voltage apply on motor */
@@ -224,18 +226,7 @@ void CMDMOTOR::loop() {
   
   if (enabled)
   {
-  /*
-  SerialDebug->print("\r\n");
-  SerialDebug->print("\r\n");
-
-  SerialDebug->print(", newPoint=: ");
-  SerialDebug->print(newPoint);
-
-  SerialDebug->print(", point=: ");
-  SerialDebug->print(point);
-  SerialDebug->print(", (newPoint-point)=: ");
-  SerialDebug->print((newPoint - point));
-*/
+ 
   if (newPoint != point) {
     if ((newPoint - point) > 0) {
       point = point + MIN(dpointMax, (newPoint - point));
@@ -251,8 +242,12 @@ void CMDMOTOR::loop() {
   SerialDebug->print(point);
   SerialDebug->print("\r\n");*/
  // Input = getEncoder()->getValue();
+ #if ENABLE_SPEED
 
   int speed = getEncoder()->getSpeed();
+#else
+   int speed = getEncoder()->getDeltaValue();
+#endif
   Input = speed;
 
   
@@ -316,45 +311,47 @@ else
 
 
 
-#ifdef ROS_USED 
+#ifdef ROS_USED
+
 
 CMDMOTOR * myZcmdmotor[4];
 static void callbackinstancepwm0( const std_msgs::Int16& pwm_msg)
 {	
   myZcmdmotor[0]->enabled=false;
-  myZcmdmotor[0]->setPWMValue(pwm_msg.data);    
+  myZcmdmotor[0]->setPWMValue(-pwm_msg.data);  
 }
 
 static void callbackinstancespeed0( const std_msgs::Int16& speed_msg)
 {	
-  myZcmdmotor[0]->setPoint(speed_msg.data);    
+  myZcmdmotor[0]->setPoint(-speed_msg.data);  
+
 }
 
 static void callbackinstancepwm1( const std_msgs::Int16& pwm_msg)
 {	
   myZcmdmotor[1]->enabled=false;
-  myZcmdmotor[1]->setPWMValue(pwm_msg.data);    
+  myZcmdmotor[1]->setPWMValue(-pwm_msg.data);  
 }
 
 static void callbackinstancespeed1( const std_msgs::Int16& speed_msg)
 {	
-  myZcmdmotor[1]->setPoint(speed_msg.data);    
+  myZcmdmotor[1]->setPoint(-speed_msg.data);    
 }
 
 static void callbackinstancepwm2( const std_msgs::Int16& pwm_msg)
 {	
   myZcmdmotor[2]->enabled=false;
-  myZcmdmotor[2]->setPWMValue(pwm_msg.data);    
-}
+  myZcmdmotor[2]->setPWMValue(-pwm_msg.data);  
+ }
 
 static void callbackinstancespeed2( const std_msgs::Int16& speed_msg)
 {	
-  myZcmdmotor[2]->setPoint(speed_msg.data);    
+  myZcmdmotor[2]->setPoint(-speed_msg.data);    
 }
 static void callbackinstancepwm3( const std_msgs::Int16& pwm_msg)
 {	
   myZcmdmotor[3]->enabled=false;
-  myZcmdmotor[3]->setPWMValue(pwm_msg.data);    
+  myZcmdmotor[3]->setPWMValue(-pwm_msg.data);    
 }
 
 static void callbackinstancespeed3( const std_msgs::Int16& speed_msg)
