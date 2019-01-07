@@ -42,6 +42,10 @@ public:
   ZEncoder * getEncoder();
   CMDMOTOR(int INCA, int INCB, int MP, int MM);
   void setPin(int INCA, int INCB, int MP, int MM);
+  	/** setup the refresh rate of the topic
+	*/
+  void setRefreshRateUs(uint32_t intervalTime //!< duration between 2 topic in Micro Seconde
+  );
   void loop();
   void setup();
    #ifdef ROS_USED 
@@ -56,9 +60,9 @@ private:
   #ifdef ROS_USED 
     ros::NodeHandle  *nh;
     std_msgs::Int16 pwm_msg;//speed //deltaD//D
-    std_msgs::Int16 speed_msg;//speed //deltaD//D
+    std_msgs::Int32 speed_msg;//speed //deltaD//D
     ros::Subscriber<std_msgs::Int16> *subPWM;
-    ros::Subscriber<std_msgs::Int16> *subSpeed;
+    ros::Subscriber<std_msgs::Int32> *subSpeed;
         
 #endif
   ZEncoder * encoder;

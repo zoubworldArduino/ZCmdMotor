@@ -22,13 +22,18 @@ int CMDMOTOR::getPoint()
 }
 void CMDMOTOR::setPoint(int mypoint) {
   enabled=true;
+  
+  
+#ifdef SMOOTH
   newPoint = mypoint;
   if ((newPoint - point) > 0) {
     point = point + MIN(dpointMax, (newPoint - point));
   } else {
     point = point - MIN(dpointMax, (point - newPoint));
   }
-
+#else
+  point=mypoint;
+#endif
 }
 void CMDMOTOR::Callback(int newValue) {
   SerialDebug->print("D:");
@@ -74,16 +79,19 @@ CMDMOTOR::CMDMOTOR(int INCA, int INCB, int MP, int MM) {
 #ifdef ROS_USED 
     nh=0;
 #endif
- Kp = 20;//1
- Ki = 30;//0.05
- Kd = 0.0005; //0.0005
+ Kp = 4000.0/371029.0;// 10% of error
+ Ki =4000.0/371029.0*100;//;// 4000.0/371029.0;//30;//0.05
+ Kd =Kp/1000;//0.0005; //0.0005
  olddirection = 1;
  direction = -1;
  dpointMax = 50;
     point=0; Input=1; Output=0;
  pid = new PID(&Input, &Output, &point, Kp, Ki, Kd, DIRECT);
+setRefreshRateUs(10000);
+    assert(pid!=0);// heap issue.
 // pid->SetSampleTime(10);
  aTune  = new PID_ATune(&Input, &Output);
+  assert(aTune!=0);// heap issue.
  tuning = false;
  enabled=false;
  aTuneStep=50, aTuneNoise=1, aTuneStartValue=100;
@@ -112,6 +120,16 @@ SerialDebug=0;
   pinMM = MM;
 
 }
+	/** setup the refresh rate of the topic
+	*/
+void CMDMOTOR::setRefreshRateUs(uint32_t intervalTime //!< duration between 2 topic in Micro Seconde
+  )
+  {
+   if(getEncoder()!=0) 
+     getEncoder()->setRefreshRateUs(intervalTime);
+    if(pid!=0) 
+      pid->SetSampleTime(intervalTime/1000);
+  }
 void CMDMOTOR::setPin(int INCA, int INCB, int MP, int MM) 
 {
     pinINCA = INCA;
@@ -144,7 +162,8 @@ void CMDMOTOR::setup() {
   pinMode(pinMM, OUTPUT);
   digitalWrite(pinMP, LOW);
   digitalWrite(pinMM, LOW);
-  encoder = new ZEncoder(pinINCA, pinINCB, FULL, NULL); //FULL, QUARTER
+  encoder = new ZEncoder(pinINCA, pinINCB, QUARTER, NULL); //FULL, QUARTER
+  assert(encoder!=0);// heap issue.
   //turn the PID on
   pid->SetMode(MANUAL);
 
@@ -185,18 +204,16 @@ void CMDMOTOR::setPWMValue(signed int m1) {
   m1 = (m1 > PWMMAX) ? PWMMAX : m1;
   m1 = (m1 < -PWMMAX) ? -PWMMAX : m1;
   if (m1 == 0) {
-       noInterrupts();
+//       noInterrupts();
     digitalWrite(pinMM, LOW);
-    pinMode(pinMP, OUTPUT);
     digitalWrite(pinMP, LOW);
-     interrupts();
+//     interrupts();
   if (SerialDebug) SerialDebug->print("Mx= STOP,");
   } else if (m1 > 0) {
-      noInterrupts();
+//      noInterrupts();
     digitalWrite(pinMM, LOW);
-    
     analogWrite(pinMP, m1);
-     interrupts();
+  //   interrupts();
     if (SerialDebug) 
     {
     SerialDebug->print("Mx= LOW,");
@@ -204,10 +221,10 @@ void CMDMOTOR::setPWMValue(signed int m1) {
     SerialDebug->print(" \r\n");
     }
   } else {
-     noInterrupts();
+   //  noInterrupts();
     digitalWrite(pinMM, HIGH);
     analogWrite(pinMP, PWMMAX + m1);
-     interrupts();
+  //   interrupts();
     if (SerialDebug) 
     {
     SerialDebug->print("Mx= HIGH,");
@@ -226,7 +243,7 @@ void CMDMOTOR::loop() {
   
   if (enabled)
   {
- 
+ #ifdef SMOOTH
   if (newPoint != point) {
     if ((newPoint - point) > 0) {
       point = point + MIN(dpointMax, (newPoint - point));
@@ -237,7 +254,10 @@ void CMDMOTOR::loop() {
     /*  SerialDebug->print(", -MIN(dpointMax,(point-newPoint)=: ");
       SerialDebug->print(MIN(dpointMax, (point - newPoint)));*/
     }
-  }/*
+  }
+#endif
+  
+  /*
   SerialDebug->print(", point=: ");
   SerialDebug->print(point);
   SerialDebug->print("\r\n");*/
@@ -321,7 +341,7 @@ static void callbackinstancepwm0( const std_msgs::Int16& pwm_msg)
   myZcmdmotor[0]->setPWMValue(-pwm_msg.data);  
 }
 
-static void callbackinstancespeed0( const std_msgs::Int16& speed_msg)
+static void callbackinstancespeed0( const std_msgs::Int32& speed_msg)
 {	
   myZcmdmotor[0]->setPoint(-speed_msg.data);  
 
@@ -333,7 +353,7 @@ static void callbackinstancepwm1( const std_msgs::Int16& pwm_msg)
   myZcmdmotor[1]->setPWMValue(-pwm_msg.data);  
 }
 
-static void callbackinstancespeed1( const std_msgs::Int16& speed_msg)
+static void callbackinstancespeed1( const std_msgs::Int32& speed_msg)
 {	
   myZcmdmotor[1]->setPoint(-speed_msg.data);    
 }
@@ -344,7 +364,7 @@ static void callbackinstancepwm2( const std_msgs::Int16& pwm_msg)
   myZcmdmotor[2]->setPWMValue(-pwm_msg.data);  
  }
 
-static void callbackinstancespeed2( const std_msgs::Int16& speed_msg)
+static void callbackinstancespeed2( const std_msgs::Int32& speed_msg)
 {	
   myZcmdmotor[2]->setPoint(-speed_msg.data);    
 }
@@ -354,11 +374,11 @@ static void callbackinstancepwm3( const std_msgs::Int16& pwm_msg)
   myZcmdmotor[3]->setPWMValue(-pwm_msg.data);    
 }
 
-static void callbackinstancespeed3( const std_msgs::Int16& speed_msg)
+static void callbackinstancespeed3( const std_msgs::Int32& speed_msg)
 {	
   myZcmdmotor[3]->setPoint(speed_msg.data);    
 }
-static void(*callbackinstancespeed[4])(const std_msgs::Int16& cmd_msg)={
+static void(*callbackinstancespeed[4])(const std_msgs::Int32& cmd_msg)={
 	callbackinstancespeed0,callbackinstancespeed1,callbackinstancespeed2,callbackinstancespeed3	
 	};
 static void(*callbackinstancepwm[4])(const std_msgs::Int16& cmd_msg)={
@@ -374,7 +394,9 @@ void CMDMOTOR::setup( ros::NodeHandle * myNodeHandle,	const char   *	topicPWM,	c
   myZcmdmotor[index]= this;
   nh=myNodeHandle;
   subPWM=new ros::Subscriber<std_msgs::Int16> (topicPWM, callbackinstancepwm[index]); 
-  subSpeed=new ros::Subscriber<std_msgs::Int16> (topicSPEED, callbackinstancespeed[index]); 
+  assert(subPWM!=0);// heap issue.
+  subSpeed=new ros::Subscriber<std_msgs::Int32> (topicSPEED, callbackinstancespeed[index]); 
+  assert(subSpeed!=0);// heap issue.
   nh->subscribe(*subPWM); 
   nh->subscribe(*subSpeed); 
   DEBUG(nh->loginfo("CMDMOTOR::setup()")); 
