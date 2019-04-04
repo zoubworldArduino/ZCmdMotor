@@ -25,6 +25,7 @@ class CMDMOTOR {
   int pinINCB;
   int pinMP;
   int pinMM;
+  int pinEN;
 public:
 
   double point, Input, Output;
@@ -42,6 +43,7 @@ public:
   ZEncoder * getEncoder();
   CMDMOTOR(int INCA, int INCB, int MP, int MM);
   void setPin(int INCA, int INCB, int MP, int MM);
+  void setPin(int INCA, int INCB, int MP, int MM, int EN);
   	/** setup the refresh rate of the topic
 	*/
   void setRefreshRateUs(uint32_t intervalTime //!< duration between 2 topic in Micro Seconde
