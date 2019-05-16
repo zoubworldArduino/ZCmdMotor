@@ -21,8 +21,8 @@ int CMDMOTOR::getPoint()
   return point;
 }
 void CMDMOTOR::setPoint(int mypoint) {
-  enabled=true;
-  
+
+   enabled=true;
   
 #ifdef SMOOTH
   newPoint = mypoint;
@@ -87,7 +87,7 @@ CMDMOTOR::CMDMOTOR(int INCA, int INCB, int MP, int MM) {
  dpointMax = 50;
     point=0; Input=1; Output=0;
  pid = new PID(&Input, &Output, &point, Kp, Ki, Kd, DIRECT);
-setRefreshRateUs(10000);
+setRefreshRateUs(20000);
     assert(pid!=0);// heap issue.
 // pid->SetSampleTime(10);
  aTune  = new PID_ATune(&Input, &Output);
