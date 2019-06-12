@@ -387,6 +387,10 @@ char fifoout=0;
 signed int dist[SizeFIFO];
 signed int  speed[SizeFIFO];
 boolean disten=false;
+/** identify the current distance target*/
+signed int currentDistTarget=0;
+
+/*
 boolean CMDMOTOR::addPath(signed int dist1,signed inst speed1) 
 {
   if (((fifoin+1)%SizeFIFO)==fifoout)
@@ -404,7 +408,7 @@ fifoout++;  fifoout=fifoout>=SizeFIFO?0:fifoout;
 
   }
 
-}
+}*/
 /** define the distance to do
 dist1 is the coder inc step.
 */
@@ -414,8 +418,6 @@ void setDist(signed int dist1)
 disten=true;  
   
 }
-/** identify the current distance target*/
-signed int currentDistTarget=0;
 
 void CMDMOTOR::setPin(int INCA, int INCB, int MP, int MM) 
 {
@@ -569,8 +571,8 @@ void CMDMOTOR::loop() {
         }
         else
         {
-          setpoint(speed[fifoout]);
-          setDist(setDist[fifoout]);
+          setPoint(speed[fifoout]);
+          setDist(dist[fifoout]);
           fifoout++;  fifoout=fifoout>=SizeFIFO?0:fifoout;
         }
       }
