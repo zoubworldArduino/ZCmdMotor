@@ -79,6 +79,7 @@ CMDMOTOR::CMDMOTOR(int INCA, int INCB, int MP, int MM) {
 #ifdef ROS_USED 
 	nh=0;
 #endif
+        K0=0;
 	Kp = 4000.0/371029.0;// 10% of error
 	Ki =4000.0/371029.0*10;//;// 4000.0/371029.0;//30;//0.05
 	Kd =Kp/1000;//0.0005; //0.0005
@@ -127,6 +128,295 @@ void CMDMOTOR::setRefreshRateUs(uint32_t intervalTime //!< duration between 2 to
 	if(pid!=0) 
 		pid->SetSampleTime(intervalTime/1000);
 }
+
+
+
+void CMDMOTOR::testPID(signed int speed, unsigned int responsetime)
+{
+  stop();
+  signed int encp2=0;
+  signed int encp=getEncoder()->getSpeed();//flush a computation
+   while(encp!=0) // wait speed update to 0
+   { wdt_clr();
+ encp=getEncoder()->getSpeed();
+   }
+  getPID()->SetTunings( Kp,  Ki,  Kd);
+  getPID()->Initialize();
+   
+  setPoint(speed);
+  DELAYLOOP( responsetime) 
+  {
+   loop();
+   delay(1);
+   wdt_clr();
+  }
+  encp=getEncoder()->getSpeed();
+  {DELAYLOOP( responsetime) 
+  {
+   loop();
+   delay(1);
+   wdt_clr();
+  }}
+  encp2=getEncoder()->getSpeed();
+   stop();delay(100);
+  while(getEncoder()->getSpeed()!=0) // wait speed update to 0
+  wdt_clr();
+}
+/**
+tuning methodes :
+ Zeigler-Nichols (ZN) 
+ Tyreus-Luyben or Rivera, Morari and Skogestad.
+*/
+void CMDMOTOR::calib() 
+{
+  int i=0;
+  // find k0ff kpff : feed forward parameter
+  stop();
+  signed int pwm0=-1;
+  while(i>pwm0)
+  {// search again the K0, on bad motoreductor, these is several blocking point
+      pwm0=i;
+    setPWMValue(pwm0/2);//apply a small pwm to go on block point
+    delay(100);getEncoder()->getSpeed();
+    int timeout=1000;wdt_clr();
+    while(getEncoder()->getSpeed()!=0 && (timeout-->0))
+      delay(1);
+    for(i=pwm0/2;(i<4096) && (getEncoder()->getSpeed()==0);i++)
+    {
+      setPWMValue(i);delay(1);
+    }  
+  }
+    pwm0=i;
+  signed int enc0=getEncoder()->getSpeed();  
+  signed int pwm1=4096;
+  setPWMValue(pwm1);
+  wdt_clr();delay(700);wdt_clr();
+  signed int enc1=getEncoder()->getSpeed();
+   stop();delay(100); wdt_clr();
+  double K0ff=pwm0;
+  double Kpff=pwm1-pwm0;
+  Kpff=Kpff/(enc1-enc0);
+  getPID()->setFeedForward(K0ff,Kpff);
+  wdt_clr();
+  // estimate kp PID parameter
+ double Kp=Kpff/8;//kp~kpff
+ 
+ 
+  unsigned int responsetime=getPID()->getSampleTime()/1000*25;
+ 
+  signed int encp=getEncoder()->getSpeed();//flush a computation
+  signed int encp2=0;
+   while(encp!=0) // wait speed update to 0
+   { wdt_clr();
+ encp=getEncoder()->getSpeed();
+   }
+   ////////////////////////////////////////////////////
+   
+   
+    setPWMValue(pwm1*8/10);
+   unsigned long t0=micros();
+    while(encp<enc1*5/100) // wait speed update to 0
+   { wdt_clr();
+ encp=getEncoder()->getSpeed();
+ delay(1);
+   }
+    unsigned long t1=micros();
+     while(encp2<enc1*64/100) // wait speed update to 0
+   { wdt_clr();
+ encp2=getEncoder()->getSpeed();
+ delay(1);
+   }
+    
+      unsigned long t2=micros();
+ stop();delay(100);
+    unsigned long L=t1-t0;
+       unsigned long T=t2-t1;
+       
+   Kp=1.2*T/L;
+   Ki=2.0*L/1000000.0;
+   Kd=0.5*L/1000000.0;
+   Kp*=Kpff;
+     Ki*=Kpff;
+   Kd*=Kpff;
+    getPID()->SetTunings( Kp,  Ki,  Kd);
+   
+    /*
+   responsetime=1000;
+    {
+     signed int speed=enc1/10;// adjust at low speed 5%
+testPID( speed,  responsetime);
+
+speed=enc1/2;// adjust at low speed 5%
+testPID( speed,  responsetime);
+}
+*/
+  /* 
+   //////////////////////////////////////
+ signed int speed=enc1/20;// adjust at low speed 5%
+while (encp<speed*8/10)
+{
+  Kp*=2;
+  getPID()->SetTunings( Kp,  0,  0);
+  getPID()->Initialize();
+   
+  setPoint(speed);
+  DELAYLOOP( responsetime) 
+  {
+   loop();
+   delay(1);
+   wdt_clr();
+  }
+  encp=getEncoder()->getSpeed();
+  {DELAYLOOP( responsetime) 
+  {
+   loop();
+   delay(1);
+   wdt_clr();
+  }}
+  encp2=getEncoder()->getSpeed();
+   stop();delay(100);
+  while(getEncoder()->getSpeed()!=0) // wait speed update to 0
+  wdt_clr();
+}
+
+
+stop();
+ Kp/=2;
+speed=enc1/2;// adjust at high speed 50%
+while(encp!=0)
+ encp=getEncoder()->getSpeed();
+while (encp<speed*8/10)
+{
+  Kp*=2;
+  getPID()->SetTunings( Kp,  0,  0);
+  getPID()->Initialize();
+   
+  setPoint(speed);
+  DELAYLOOP( responsetime) 
+  {
+   loop();
+   delay(1);
+   wdt_clr();
+  }
+  encp=getEncoder()->getSpeed();
+  { DELAYLOOP( responsetime) 
+  {
+   loop();
+   delay(1);
+   wdt_clr();
+  }}
+  encp2=getEncoder()->getSpeed();
+   stop(); delay(100);
+  while(getEncoder()->getSpeed()!=0) // wait speed update to 0
+  wdt_clr();
+}
+// define Ki
+
+Ki=Kp/10;// Ki~Kp/5 in 1st approch.
+stop();
+speed=enc1/10;// adjust at low speed 10%
+while(encp!=0)
+ encp2=encp=getEncoder()->getSpeed();
+
+while (abs(encp2-speed)>(speed*3)/100)
+{
+  Ki*=2;
+  getPID()->SetTunings( Kp,  Ki,  0);
+  getPID()->Initialize();
+   
+  setPoint(speed);
+  DELAYLOOP( responsetime) 
+  {
+   loop();
+   delay(1);
+   wdt_clr();
+  }
+  encp=getEncoder()->getSpeed();
+  {
+  DELAYLOOP( responsetime) 
+  {
+   loop();
+   delay(1);
+   wdt_clr();
+  }
+  }
+  encp2=getEncoder()->getSpeed();
+   stop(); delay(100);
+  while(getEncoder()->getSpeed()!=0) // wait speed update to 0
+  wdt_clr();
+}
+
+speed=enc1/2;// adjust at high speed 50%
+while(encp!=0)
+ encp2=encp=getEncoder()->getSpeed();
+Ki/=2;
+while (abs(encp2-speed)>(speed*3)/100)
+{
+  Ki*=2;
+  getPID()->SetTunings( Kp,  Ki,  0);
+  getPID()->Initialize();
+   
+  setPoint(speed);
+  DELAYLOOP( responsetime) 
+  {
+   loop();
+   delay(1);
+   wdt_clr();
+  }
+  encp=getEncoder()->getSpeed();
+  {
+  DELAYLOOP( responsetime) 
+  {
+   loop();
+   delay(1);
+   wdt_clr();
+  }
+  }
+  encp2=getEncoder()->getSpeed();
+   stop(); delay(100);
+  while(getEncoder()->getSpeed()!=0) // wait speed update to 0
+  wdt_clr();
+}
+
+*/
+
+}
+char fifoin=0;
+char fifoout=0;
+#define SizeFIFO 10
+signed int dist[SizeFIFO];
+signed int  speed[SizeFIFO];
+boolean disten=false;
+boolean CMDMOTOR::addPath(signed int dist1,signed inst speed1) 
+{
+  if (((fifoin+1)%SizeFIFO)==fifoout)
+    return false;
+  
+  dist[fifoin]=dist1;
+  speed[fifoin]=speed1;
+  fifoin++;  fifoin=fifoin>=SizeFIFO?0:fifoin;
+  if(!disten)
+  {
+    currentDistTarget=getEncoder()->getValue();
+setPoint(speed1);
+setDist(dist1);
+fifoout++;  fifoout=fifoout>=SizeFIFO?0:fifoout;
+
+  }
+
+}
+/** define the distance to do
+dist1 is the coder inc step.
+*/
+void setDist(signed int dist1)
+{
+  currentDistTarget+=dist1;
+disten=true;  
+  
+}
+/** identify the current distance target*/
+signed int currentDistTarget=0;
+
 void CMDMOTOR::setPin(int INCA, int INCB, int MP, int MM) 
 {
 	setPin( INCA,  INCB,  MP,  MM, -1) ;
@@ -265,6 +555,29 @@ void CMDMOTOR::loop() {
 	getEncoder()->loop();
 #endif
 
+        
+        
+  if(disten)
+  {
+    if ( ((point>0)&& (getEncoder()->getValue()>=currentDistTarget) )
+        ||((getEncoder()->getValue()<=currentDistTarget) && (point<0)))
+      {// next point
+        if(fifoin==fifoout)
+        {
+          stop();
+          disten=false;
+        }
+        else
+        {
+          setpoint(speed[fifoout]);
+          setDist(setDist[fifoout]);
+          fifoout++;  fifoout=fifoout>=SizeFIFO?0:fifoout;
+        }
+      }
+  }
+
+
+
 	if (enabled)
 	{
 #ifdef SMOOTH
@@ -288,9 +601,9 @@ void CMDMOTOR::loop() {
 		// Input = getEncoder()->getValue();
 #if ENABLE_SPEED
 
-		int speed = getEncoder()->getSpeed();
+		signed int speed = getEncoder()->getSpeed();
 #else
-		int speed = getEncoder()->getDeltaValue();
+		signed int speed = getEncoder()->getDeltaValue();
 #endif
 		Input = speed;
 
