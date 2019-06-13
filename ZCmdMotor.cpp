@@ -134,7 +134,7 @@ void CMDMOTOR::setRefreshRateUs(uint32_t intervalTime //!< duration between 2 to
 void CMDMOTOR::testPID(signed int speed, unsigned int responsetime)
 {
   stop();
-  signed int encp2=0;
+volatile  signed int encp2=0;
   signed int encp=getEncoder()->getSpeed();//flush a computation
    while(encp!=0) // wait speed update to 0
    { wdt_clr();
@@ -202,7 +202,7 @@ void CMDMOTOR::calib()
  double Kp=Kpff/8;//kp~kpff
  
  
-  unsigned int responsetime=getPID()->getSampleTime()/1000*25;
+volatile  unsigned int responsetime=getPID()->getSampleTime()/1000*25;
  
   signed int encp=getEncoder()->getSpeed();//flush a computation
   signed int encp2=0;
@@ -770,25 +770,26 @@ static void(*callbackinstancepwm[8])(const std_msgs::Int16& cmd_msg)={
 		callbackinstancepwm0,callbackinstancepwm1,callbackinstancepwm2,callbackinstancepwm3,
 		callbackinstancepwm4,callbackinstancepwm5,callbackinstancepwm6,callbackinstancepwm7	
 };
-static  int index=0;
+
+static  int CMDMOTORindex=0;
 /** setup :
   At setup after NodeHandle setup, call this to initialise the topic
  */
 void CMDMOTOR::setup( ros::NodeHandle * myNodeHandle,	const char   *	topicPWM,	const char   *	topicSPEED)
 {
-	assert(index<8);
-	myZcmdmotor[index]= this;
+	assert(CMDMOTORindex<8);
+	myZcmdmotor[CMDMOTORindex]= this;
 	nh=myNodeHandle;
-	subPWM=new ros::Subscriber<std_msgs::Int16> (topicPWM, callbackinstancepwm[index]); 
+	subPWM=new ros::Subscriber<std_msgs::Int16> (topicPWM, callbackinstancepwm[CMDMOTORindex]); 
 	assert(subPWM!=0);// heap issue.
-	subSpeed=new ros::Subscriber<std_msgs::Int32> (topicSPEED, callbackinstancespeed[index]); 
+	subSpeed=new ros::Subscriber<std_msgs::Int32> (topicSPEED, callbackinstancespeed[CMDMOTORindex]); 
 	assert(subSpeed!=0);// heap issue.
 	nh->subscribe(*subPWM); 
 	nh->subscribe(*subSpeed); 
 	DEBUG(nh->loginfo("CMDMOTOR::setup()")); 
 	DEBUG(nh->loginfo(topicPWM)); 
 	DEBUG(nh->loginfo(topicSPEED)); 
-	index++;
+	CMDMOTORindex++;
 
 }
 
